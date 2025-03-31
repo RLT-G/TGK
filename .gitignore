@@ -36,7 +36,7 @@ docs/_build/
 # PyBuilder
 target/
 
-
+*.session
 ### Django ###
 *.log
 *.pot

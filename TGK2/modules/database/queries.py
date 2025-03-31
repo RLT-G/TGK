@@ -173,22 +173,16 @@ async def sync_channels_from_json(file_path: str):
             result = await session.execute(stmt)
             existing_channels = result.scalars().all()
 
-            # Шаг 2: Преобразуем текущие каналы в словарь для быстрой проверки
             existing_channels_dict = {channel.telegram_link: channel for channel in existing_channels}
 
-            # Шаг 3: Сверяем каналы
             for new_channel_data in new_channels_data:
-                # Проверка, если канал уже существует в базе
                 existing_channel = existing_channels_dict.get(new_channel_data['telegram_link'])
 
                 if existing_channel:
-                    # Если канал существует, проверяем, нужно ли его обновлять
                     if (existing_channel.category != new_channel_data['category']):
-                        # Обновляем канал
                         existing_channel.category = new_channel_data['category']
                         print(f"Updated channel: {existing_channel.telegram_link}")
                 else:
-                    # Если канала нет в базе данных, добавляем новый
                     new_channel = Channel(
                         telegram_link=new_channel_data['telegram_link'],
                         category=new_channel_data.get('category', None),
@@ -196,13 +190,11 @@ async def sync_channels_from_json(file_path: str):
                     session.add(new_channel)
                     print(f"Added new channel: {new_channel.telegram_link}")
 
-            # Шаг 4: Удаляем каналы, которых нет в JSON
             for existing_channel in existing_channels:
                 if existing_channel.telegram_link not in [channel['telegram_link'] for channel in new_channels_data]:
                     await session.execute(delete(Channel).filter(Channel.id == existing_channel.id))
                     print(f"Deleted channel: {existing_channel.telegram_link}")
 
-        # Коммит изменений в базу данных
         await session.commit()
 
 
@@ -305,6 +297,7 @@ async def get_all_telegram_accounts_by_order_id(order_id):
                     "is_connected": account.is_connected,
                     "auth_code": account.auth_code,
                     "current_order_id": account.current_order_id,
+                    "avatar_url": account.avatar_url
                 })
             
             return accounts_list

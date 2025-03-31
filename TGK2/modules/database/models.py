@@ -55,6 +55,7 @@ class TelegramAccount(Base):
     is_connected = Column(Boolean, default=False)
     auth_code = Column(String(255), nullable=True)
     current_order_id = Column(Integer, ForeignKey('orders.id'), nullable=True)
+    avatar_url = Column(String, nullable=True)
     phone_number = relationship('PhoneNumber', backref='telegram_account')
     proxy = relationship('Proxy', backref='telegram_account')
     current_order = relationship('Order', backref='accounts')

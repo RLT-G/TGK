@@ -28,6 +28,7 @@ from modules import proxy
 from modules.settings import TZ
 from modules.telegram import post_comment_for_order
 from modules.log_handler import logger
+from modules import settings
 from pprint import pprint
 
 
@@ -60,16 +61,21 @@ async def run_order(order_id, scheduler):
     channels_to_comment = [_ for _ in channels if _.get('category') in categories]
 
     accounts = await get_all_telegram_accounts_by_order_id(order_id=order_id)
-
     for account in accounts:
-        for _ in range(random.randint(1, 1)):
+
+        created_at = datetime.fromisoformat(account.get('created_at')).replace(tzinfo=TZ)
+        now = datetime.now(TZ)
+        days_passed = (now - created_at).days
+        ab = settings.DAYS_ACTIVE.get(str(days_passed), None)
+        if not ab:
+            ab = settings.DAYS_ACTIVE.get('6')
+        
+        run_timies = []
+        for _ in range(random.randint(*ab)):
             random.shuffle(channels_to_comment)
 
             seconds_since_midnight = get_seconds_since_midnight()
             remaining_seconds = 86400 - seconds_since_midnight
-            if seconds_since_midnight >= 72_000:
-                continue
-            
             delay = random.gauss(
                 remaining_seconds // 2,  # Среднее
                 remaining_seconds // 4,  # Стандартное отклонение
@@ -83,6 +89,11 @@ async def run_order(order_id, scheduler):
 
             if run_time.strftime('%H:%M') == '00:00':
                 continue
+            
+            if run_time.strftime('%H:%M') in run_timies:
+                continue
+
+            run_timies.append(run_time.strftime('%H:%M'))
 
             logger.debug(
                 f"{account.get('username')} started at {run_time.strftime('%Y-%m-%d %H:%M')}"

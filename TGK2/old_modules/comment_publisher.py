@@ -80,7 +80,6 @@ async def comment_on_post(
         delay: int
     ) -> bool | None:
     
-    print('Зашел в comment_on_post')
 
     await asyncio.sleep(delay)
 

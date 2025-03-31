@@ -68,13 +68,19 @@ async def _check_order_block(current_order_data: dict, channel_address: str) -> 
         return
 
 
-async def _change_about_block(client, api_id, api_hash, channel_address, gender, channel_description):
+async def _change_account_block(client, api_id, api_hash, channel_address, gender, channel_description, account):
     try:
         about_text = await generate_about_text(gender, channel_address, channel_description)
         await client(functions.account.UpdateProfileRequest(about=about_text))
+        avatar_url = account.get('avatar_url')
+        if avatar_url:
+
+            full_avatar_url = f'../django_project/media/{avatar_url}'
+            file = await client.upload_file(full_avatar_url)
+            await client(functions.photos.UploadProfilePhotoRequest(file=file))
 
     except Exception as ex:
-        logger.warning(f'_change_about_block: {ex}')
+        logger.warning(f'_change_account_block: {ex}')
 
 
 async def _post_data_block(client, channel_to_comment):
@@ -117,7 +123,7 @@ async def _join_channel_block(client, discussion_group_id):
         await client(GetParticipantRequest(discussion_group_id, 'me'))
         return True
     
-    except UserNotParticipantError:
+    except Exception:
         try:
             await client(JoinChannelRequest(discussion_group_id))
             return True
@@ -185,10 +191,6 @@ async def post_comment_for_order(channels_to_comment, order, account):
     api_id, api_hash, phone_number, gender, channel_address, current_order_data, channel_description = init_data
 
 
-    # order_is_normal = await _check_order_block(current_order_data, channel_address) # Проверяем статус заказа
-    # if not order_is_normal:
-    #     return
-    
     try:
         client = TelegramClient(
             f"./sessions/{api_id}{api_hash}{phone_number[1::]}", 
@@ -201,7 +203,7 @@ async def post_comment_for_order(channels_to_comment, order, account):
             await client.disconnect()
             raise Exception('Auth failed')
 
-        await _change_about_block(client, api_id, api_hash, channel_address, gender, channel_description) # Меняем About 
+        await _change_account_block(client, api_id, api_hash, channel_address, gender, channel_description, account) # Меняем About 
 
         for channel_to_comment in channels_to_comment:
             post_data = await _post_data_block(client, channel_to_comment) # Получаем инфу по ласт посту в канале

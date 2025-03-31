@@ -94,12 +94,9 @@ def main():
 
 
 
-        # if input('ЗБС?') == 'YES':
-        #     while input('ЕБАШИТЬ???'):
         #         response = asyncio.run(numberphones.get_code(id=numberphone_id))
         #         pprint(response)
 
-        #     if input('ЗБС?') == 'YES':
         #         response = asyncio.run(numberphones.set_status(id=numberphone_id, status=6))
         #         pprint(response)
         #         break

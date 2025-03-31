@@ -24,9 +24,10 @@ class TelegramAccountAdmin(admin.ModelAdmin):
     list_display = ('username', 'phone_number', 'is_banned', 'created_at')
     
     def get_fields(self, request, obj=None):
-        fields = ['username', 'phone_number', 'proxy', 'gender', 'description', 'is_banned', 'api_id', 'api_hash']
+        fields = ['username', 'avatar', 'phone_number', 'proxy', 'gender', 
+                      'api_id', 'api_hash']
         if obj:
-            fields = ['username', 'phone_number', 'proxy', 'gender', 'description', 'current_order', 
+            fields = ['username', 'avatar', 'phone_number', 'proxy', 'gender', 'current_order', 
                       'api_id', 'api_hash', 'auth_code', 'is_connected', 'is_banned']
         return fields
 

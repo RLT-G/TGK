@@ -18,7 +18,7 @@ class Proxy(models.Model):
     password = models.CharField('Пароль (Для подключения)', max_length=255)
     date = models.DateTimeField('Дата покупки')
     date_end = models.DateTimeField('Дата завершения')
-    active = models.BooleanField('Прокси активна?')
+    active = models.BooleanField('Прокси активна?', default=True)
     country = models.CharField('Страна', max_length=100)
     is_linked = models.BooleanField('Подключен к аккаунту?', default=False)
 
@@ -127,7 +127,7 @@ class TelegramAccount(models.Model):
     phone_number = models.OneToOneField(PhoneNumber, on_delete=models.CASCADE, verbose_name='Номер телефона', )
     proxy = models.OneToOneField(Proxy, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Прокси-сервер')
     gender = models.CharField('Пол', max_length=1, choices=CATEGORY)
-    description = models.TextField('Описание аккаунта', null=True, blank=True)
+    description = models.TextField('Описание аккаунта', null=True, blank=True, default='')
     is_banned = models.BooleanField('Аккаунт забанен?', default=False)
     created_at = models.DateTimeField('Дата создания', default=timezone.now)
     api_id = models.CharField('Api id аккаунта', null=False)
@@ -136,7 +136,8 @@ class TelegramAccount(models.Model):
     is_connected = models.BooleanField('Аккаунт авторизирован в системе?', default=False)
     auth_code = models.CharField('Код подтверждения', max_length=255, null=True, blank=True)
     current_order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Текущий заказ')
-    
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, db_column='avatar_url', verbose_name='Аватар')
+
     class Meta:
         managed = False 
         db_table = 'telegram_accounts'
