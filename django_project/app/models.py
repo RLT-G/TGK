@@ -48,32 +48,15 @@ class PhoneNumber(models.Model):
         return f"{str(self.country).upper()} --- {self.number}"
 
 
+# class OrderCategory(models.Model):
+#     order = models.ForeignKey('Order', on_delete=models.CASCADE)
+#     category = models.ForeignKey('Category', on_delete=models.CASCADE)
+
+#     class Meta:
+#         unique_together = ('order', 'category')
+
+
 class Order(models.Model):
-    CATEGORY = [
-        ('news', 'Новости и СМИ'),
-        ('entertrainment', 'Юмор и развлечение'),
-        ('blogs', 'Блоги'),
-        ('technologies', 'Технологии'),
-        ('policy', 'Политика'),
-        ('crypto', 'Крипта'),
-        ('films|TV', 'Фильмы и сериалы'),
-        ('education', 'Наука и образование'),
-        ('economy', 'Экономика и финансы'),
-        ('music', 'Музыка'),
-        ('linguistics', 'Лингвистика'),
-        ('business', 'Бизнес и стартапы'),
-        ('psychology', 'Психология'),
-        ('marketing', 'Маркетинг и реклама'),
-        ('career', 'Карьера'),
-        ('literature', 'Литература'),
-        ('sport', 'Спорт и здоровье'),
-        ('trips', 'Путешествия'),
-        ('art', 'Искусство и фото'),
-        ('fashion', 'Мода и красота'),
-        ('medicine', 'Медицина'),
-        ('games', 'Игры и приложения'),
-        ('food', 'Еда и напитки'),
-    ]
     
     STATUSES = [
         ('pending', 'В очереди'),
@@ -89,12 +72,13 @@ class Order(models.Model):
 
     created_at = models.DateTimeField('Дата создания', default=timezone.now)
     channel_address = models.CharField('Рекламируемый канал (@example или https://t.me/example)')
-    channel_description = models.TextField('Описание рекламируемого канала', max_length=70, null=True, blank=True)
-    channel_category = MultiSelectField(
-        'Категория рекламируемого канала',
-        max_length=255,
-        choices=CATEGORY,
-        max_choices=4,
+    channel_description = models.TextField('Описание рекламируемого канала', max_length=2048, null=True, blank=True)
+    channel_category = models.ManyToManyField(
+        'Category',
+        verbose_name='Категория рекламируемого канала',
+        related_name='orders',
+        # through='OrderCategory',
+        blank=False
     )
 
     ordered_comment_posts = models.IntegerField('Заказанное кол-во комментариев', null=True, blank=True)
@@ -123,7 +107,11 @@ class TelegramAccount(models.Model):
         ('M', 'Мужской'),
     ]
 
-    username = models.CharField('Имя пользователя (@username)', max_length=100, unique=True, null=True, blank=True)
+    username = models.CharField('Ник пользователя (@username)', max_length=100, unique=True, null=True, blank=True)
+    
+    telegram_firstname = models.CharField('Имя', max_length=255, unique=False, null=True, blank=True, default="")
+    telegram_secondname = models.CharField('Фамилия', max_length=255, unique=False, null=True, blank=True, default="")
+
     phone_number = models.OneToOneField(PhoneNumber, on_delete=models.CASCADE, verbose_name='Номер телефона', )
     proxy = models.OneToOneField(Proxy, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Прокси-сервер')
     gender = models.CharField('Пол', max_length=1, choices=CATEGORY)
@@ -157,38 +145,24 @@ class TelegramAccount(models.Model):
         return self.username or str(self.phone_number)
 
 
+class Category(models.Model):
+    name = models.CharField('Название категории', max_length=50, unique=True, null=False, blank=False)
+    
+    class Meta:
+        managed = False 
+        db_table = 'categories'
+        verbose_name = 'Категория каналов'
+        verbose_name_plural = 'Категории каналов'
 
+    def __str__(self):
+        return f"№{self.pk}. {self.name}"
 
 
 class Channel(models.Model):
-    CATEGORY = [
-        ('news', 'Новости и СМИ'),
-        ('entertrainment', 'Юмор и развлечение'),
-        ('blogs', 'Блоги'),
-        ('technologies', 'Технологии'),
-        ('policy', 'Политика'),
-        ('crypto', 'Крипта'),
-        ('films|TV', 'Фильмы и сериалы'),
-        ('education', 'Наука и образование'),
-        ('economy', 'Экономика и финансы'),
-        ('music', 'Музыка'),
-        ('linguistics', 'Лингвистика'),
-        ('business', 'Бизнес и стартапы'),
-        ('psychology', 'Психология'),
-        ('marketing', 'Маркетинг и реклама'),
-        ('career', 'Карьера'),
-        ('literature', 'Литература'),
-        ('sport', 'Спорт и здоровье'),
-        ('trips', 'Путешествия'),
-        ('art', 'Искусство и фото'),
-        ('fashion', 'Мода и красота'),
-        ('medicine', 'Медицина'),
-        ('games', 'Игры и приложения'),
-        ('food', 'Еда и напитки'),
-    ]
 
-    telegram_link = models.URLField('URL канала', unique=True)
-    category = models.CharField('Категория канала', max_length=50, choices=CATEGORY, null=False, blank=False)
+    telegram_links = models.CharField('Ссылки на каналы', unique=False, null=False, default='[]')
+
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Категория канала')
 
     class Meta:
         managed = False 
@@ -197,7 +171,7 @@ class Channel(models.Model):
         verbose_name_plural = 'Каналы'
 
     def __str__(self):
-        return f"№{self.pk}. {self.telegram_link}"
+        return f"№{self.pk}. {self.category.name}"
     
 
 class Comment(models.Model):
@@ -215,3 +189,13 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Аккаунт: {self.telegram_account.username} | URL канала: {self.channel_link} | URL комментария: {self.comment_link or 'unknown'}"
+    
+
+class OrderCategory(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
+    class Meta:
+        db_table = 'orders_channel_category'  # Указываем явное имя таблицы
+        unique_together = ('order', 'category')  # Ограничение на уникальность пары (order, category)
+        managed = False  

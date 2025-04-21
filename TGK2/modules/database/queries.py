@@ -16,9 +16,16 @@ from modules.database.models import (
     PhoneNumber,
     Order
 )
+import ast
 
 
-async def get_searcher_data():
+async def get_searcher_data() -> dict:
+    """
+    Receive date to parser
+
+    :return:    Info to parser
+    :rtype:     dict
+    """
     async with async_session() as session:
         stmt = future_select(TelegramAccount).filter(TelegramAccount.is_searcher == True).limit(1).options(
             selectinload(TelegramAccount.phone_number),
@@ -64,8 +71,13 @@ async def get_searcher_data():
 
 
 async def get_non_searcher_data():
+    """
+    Receive accounts with is_searcher=False
+
+    :return: Info about accounts
+    :rtype: dict
+    """
     async with async_session() as session:
-        # Запрос на получение всех аккаунтов с is_searcher=False
         stmt = select(TelegramAccount).filter(TelegramAccount.is_searcher == False).options(
             selectinload(TelegramAccount.phone_number),
             selectinload(TelegramAccount.proxy)
@@ -73,8 +85,6 @@ async def get_non_searcher_data():
         
         result = await session.execute(stmt)
         telegram_accounts = result.scalars().all()
-        
-        # Возвращаем список данных для всех аккаунтов
         accounts_data = []
         for telegram_account in telegram_accounts:
             account_data = {
@@ -110,7 +120,19 @@ async def get_non_searcher_data():
         return accounts_data
 
 
-async def save_proxy_data(proxy_data: dict, proxy_country: str):
+async def save_proxy_data(proxy_data: dict, proxy_country: str) -> None:
+    """
+    Save proxy date to db
+    
+    :param proxy_data: Proxy date
+    :type proxy_data: dict
+
+    :param proxy_country: Proxy country (doesnt exist in proxy6)
+    :type proxy_country: dict
+
+    :return: None
+    :rtype: None
+    """
     async with async_session() as session:
         async with session.begin():
             for proxy in proxy_data.values():
@@ -144,31 +166,57 @@ async def save_proxy_data(proxy_data: dict, proxy_country: str):
         await session.commit()
 
 
-async def get_all_channels():
+async def get_all_channels() -> list[dict]:
+    """
+    Receive all channels in dictionary
+    
+    :param proxy_country: Proxy country (doesnt exist in proxy6)
+    :type proxy_country: dict
+
+    :return: List of channels
+    :rtype: list[dict]
+    """
     async with async_session() as session:
-        stmt = select(Channel)
-        result = await session.execute(stmt)
-        channels = result.scalars().all()
-
-        channels_list = [
-            {
-                'id': channel.id,
-                'telegram_link': channel.telegram_link,
-                'category': channel.category,
-            }
-            for channel in channels
-        ]
+        stmt = select(Channel).options(
+            selectinload(Channel.category)  
+        )
         
-    return channels_list
+        result = await session.execute(stmt)
+        channels_list = result.scalars().all()
+
+        channels_data = []
+        for item in channels_list:
+            try:
+                channels = ast.literal_eval(item.telegram_links)
+                channels_category = item.category
+                for channel in channels:
+                    channels_data.append({
+                        'id': item.id,
+                        'telegram_link': channel,
+                        'category': {'id': channels_category.id, 'name': channels_category.name} if channels_category else None
+                    })
+            except Exception as ex:
+                print(ex)
+                continue
+        
+    return channels_data
 
 
+# Broken function because db is changed
 async def sync_channels_from_json(file_path: str):
+    """
+    sync channels fron external json file    
+    :param file_path: File path
+    :type file_path: str
+
+    :return: None
+    :rtype: None
+    """
     with open(file_path, 'r') as file:
         new_channels_data = json.load(file)
 
     async with async_session() as session:
         async with session.begin():
-            # Шаг 1: Получаем все текущие каналы из базы данных
             stmt = select(Channel)
             result = await session.execute(stmt)
             existing_channels = result.scalars().all()
@@ -198,21 +246,31 @@ async def sync_channels_from_json(file_path: str):
         await session.commit()
 
 
-async def get_all_orders():
+async def get_all_orders() -> dict:
+    """
+    Receive all orders in dictionary
+    
+    :return: Orders
+    :rtype: dict
+    """
     async with async_session() as session:
-        stmt = select(Order)
+        stmt = select(Order).options(
+            selectinload(Order.channel_category) 
+        )
         
         result = await session.execute(stmt)
         orders = result.scalars().all()
-        
+
         orders_data = []
         for order in orders:
+            order_categories = order.channel_category
+            
             order_data = {
                 'id': order.id,
                 'created_at': order.created_at,
                 'channel_address': order.channel_address,
                 'channel_description': order.channel_description,
-                'channel_category': order.channel_category,
+                'channel_category': [{'id': category.id, 'name': category.name} for category in order_categories],
                 'ordered_comment_posts': order.ordered_comment_posts,
                 'completed_comment_posts': order.completed_comment_posts,
                 'ordered_ad_days': order.ordered_ad_days,
@@ -227,14 +285,22 @@ async def get_all_orders():
 
 async def get_order_by_id(order_id: int):
     async with async_session() as session:
-        result = await session.execute(select(Order).filter(Order.id == order_id))
+        stmt = select(Order).options(
+            selectinload(Order.channel_category)
+        ).filter(Order.id == order_id)
+        
+        result = await session.execute(stmt)
         order = result.scalars().first()
+
+        if order is None:
+            return None  
+
         order_data = {
             'id': order.id,
             'created_at': order.created_at,
             'channel_address': order.channel_address,
             'channel_description': order.channel_description,
-            'channel_category': order.channel_category,
+            'channel_category': [{'id': category.id, 'name': category.name} for category in order.channel_category],
             'ordered_comment_posts': order.ordered_comment_posts,
             'completed_comment_posts': order.completed_comment_posts,
             'ordered_ad_days': order.ordered_ad_days,
@@ -297,7 +363,9 @@ async def get_all_telegram_accounts_by_order_id(order_id):
                     "is_connected": account.is_connected,
                     "auth_code": account.auth_code,
                     "current_order_id": account.current_order_id,
-                    "avatar_url": account.avatar_url
+                    "avatar_url": account.avatar_url,
+                    "firstname": account.telegram_firstname,
+                    "lastname": account.telegram_secondname
                 })
             
             return accounts_list
@@ -387,7 +455,6 @@ async def create_comment_in_db(api_hash: str, api_id: str, channel_link: str, te
         if not telegram_account:
             return
         
-        # Создаем новую запись в Comment
         new_comment = Comment(
             telegram_account_id=telegram_account.id,
             channel_link=channel_link,
@@ -441,7 +508,7 @@ async def link_account_to_order(account_id: int, order_id: int):
 async def unlink_account_to_order(order_id: int):
     async with async_session() as session:
         result = await session.execute(select(TelegramAccount).filter_by(current_order_id=order_id))
-        accounts = await result.scalars().all()
+        accounts = result.scalars().all()
 
         for account in accounts:
             account.current_order_id = None

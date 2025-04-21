@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Proxy, PhoneNumber, TelegramAccount, Channel, Comment, Order
+from .models import Proxy, PhoneNumber, TelegramAccount, Channel, Comment, Order, Category
+
+admin.site.register(Category)
 
 class ProxyAdmin(admin.ModelAdmin):
     fields = ('id', 'version', 'ip', 'host', 'port', 'user', 'password', 'date', 'date_end', 'country')
@@ -24,10 +26,10 @@ class TelegramAccountAdmin(admin.ModelAdmin):
     list_display = ('username', 'phone_number', 'is_banned', 'created_at')
     
     def get_fields(self, request, obj=None):
-        fields = ['username', 'avatar', 'phone_number', 'proxy', 'gender', 
+        fields = ['username', 'telegram_firstname', 'telegram_secondname', 'avatar', 'phone_number', 'proxy', 'gender', 
                       'api_id', 'api_hash']
         if obj:
-            fields = ['username', 'avatar', 'phone_number', 'proxy', 'gender', 'current_order', 
+            fields = ['username', 'telegram_firstname', 'telegram_secondname', 'avatar', 'phone_number', 'proxy', 'gender', 'current_order', 
                       'api_id', 'api_hash', 'auth_code', 'is_connected', 'is_banned']
         return fields
 

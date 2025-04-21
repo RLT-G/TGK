@@ -11,7 +11,8 @@ from sqlalchemy.future import select
 import asyncio
 import enum
 from datetime import datetime
-
+from sqlalchemy import Table, ForeignKey
+from sqlalchemy.orm import relationship
 
 engine = create_async_engine('postgresql+asyncpg://postgres:root@localhost:5432/tgk')
 
@@ -19,6 +20,12 @@ async_session = async_sessionmaker(engine)
 
 class Base(AsyncAttrs, DeclarativeBase):
     ...
+
+
+order_category_association = Table('orders_channel_category', Base.metadata,
+    Column('order_id', Integer, ForeignKey('orders.id', ondelete='CASCADE'), primary_key=True),
+    Column('category_id', Integer, ForeignKey('categories.id', ondelete='CASCADE'), primary_key=True)
+)
 
 
 class Proxy(Base):
@@ -43,6 +50,10 @@ class TelegramAccount(Base):
 
     id = Column(Integer, primary_key=True)
     username = Column(String(100), unique=True, nullable=True)
+    
+    telegram_firstname = Column(String(255), unique=False, nullable=True, default="")
+    telegram_secondname = Column(String(255), unique=False, nullable=True, default="")
+
     phone_number_id = Column(Integer, ForeignKey('phone_numbers.id'), unique=True, nullable=False)
     proxy_id = Column(String, ForeignKey('proxies.id'), unique=True, nullable=True)  # Исправлено на String
     gender = Column(String(1), nullable=False)
@@ -56,7 +67,9 @@ class TelegramAccount(Base):
     auth_code = Column(String(255), nullable=True)
     current_order_id = Column(Integer, ForeignKey('orders.id'), nullable=True)
     avatar_url = Column(String, nullable=True)
+
     phone_number = relationship('PhoneNumber', backref='telegram_account')
+    
     proxy = relationship('Proxy', backref='telegram_account')
     current_order = relationship('Order', backref='accounts')
 
@@ -69,7 +82,7 @@ class Order(Base):
     created_at = Column(DateTime, default=func.now(), nullable=False)
     channel_address = Column(String, nullable=False)
     channel_description = Column(Text, nullable=True)
-    channel_category = Column(String(255), nullable=True)
+    channel_category = relationship('Category', secondary=order_category_association, back_populates='orders')
     
     ordered_comment_posts = Column(Integer, nullable=True)
     completed_comment_posts = Column(Integer, nullable=True, default=0)
@@ -93,12 +106,22 @@ class PhoneNumber(Base):
     received_code = Column(String(10), nullable=True)
 
 
+class Category(Base):
+    __tablename__ = 'categories'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, nullable=False)
+    channels = relationship("Channel", back_populates="category")
+    orders = relationship("Order", secondary=order_category_association, back_populates="channel_category")
+
+
+
 class Channel(Base):
     __tablename__ = 'channels'
-
     id = Column(Integer, primary_key=True)
-    telegram_link = Column(String(100), unique=True, nullable=False)
-    category = Column(String(50), nullable=True)
+    telegram_links = Column(String, nullable=False, default="[]")
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    category = relationship("Category", back_populates="channels")
+
 
 
 class Comment(Base):

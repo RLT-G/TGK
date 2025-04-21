@@ -11,7 +11,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from modules.database.models import async_main
 from modules.database.queries import (
     save_proxy_data, 
-    get_searcher_data, 
     sync_channels_from_json, 
     get_non_searcher_data,
     get_all_orders,
@@ -25,7 +24,7 @@ from modules.database.queries import (
     get_all_telegram_accounts_by_order_id
 )
 from modules import proxy
-from modules.settings import TZ
+from modules.settings import TZ, DEBUG
 from modules.telegram import post_comment_for_order
 from modules.log_handler import logger
 from modules import settings
@@ -47,22 +46,20 @@ def seconds_to_time(seconds):
     return f"{hours:02}:{minutes:02}"
 
 
-
 async def run_order(order_id, scheduler):
-    
     order = await get_order_by_id(order_id=order_id)
-
-    channels = await get_all_channels()
-
-    categories = order.get('channel_category')
-
-    categories = categories.split(',') if ',' in categories else [categories, ]
-    
-    channels_to_comment = [_ for _ in channels if _.get('category') in categories]
-
+    # list of channels
+    channels = await get_all_channels() 
+    # list of order categories 
+    categories = [category.get('name') for category in order.get('channel_category')]
+    # list of channels with order categories 
+    channels_to_comment = [
+        channel for channel in channels if channel.get('category').get('name') in categories
+    ]
+    # list of accounts on current order
     accounts = await get_all_telegram_accounts_by_order_id(order_id=order_id)
     for account in accounts:
-
+        # Decreased activity in the first days
         created_at = datetime.fromisoformat(account.get('created_at')).replace(tzinfo=TZ)
         now = datetime.now(TZ)
         days_passed = (now - created_at).days
@@ -74,16 +71,18 @@ async def run_order(order_id, scheduler):
         for _ in range(random.randint(*ab)):
             random.shuffle(channels_to_comment)
 
+            # Calculate time to comment
             seconds_since_midnight = get_seconds_since_midnight()
             remaining_seconds = 86400 - seconds_since_midnight
             delay = random.gauss(
-                remaining_seconds // 2,  # Среднее
-                remaining_seconds // 4,  # Стандартное отклонение
+                remaining_seconds // 2,  
+                remaining_seconds // 4,
             )
-
+            # Checks
             delay = max(0, min(remaining_seconds, delay))
 
-            delay = 1
+            if DEBUG:
+                delay = 1
 
             run_time = datetime.now(TZ) + timedelta(seconds=delay)
 
@@ -98,7 +97,7 @@ async def run_order(order_id, scheduler):
             logger.debug(
                 f"{account.get('username')} started at {run_time.strftime('%Y-%m-%d %H:%M')}"
             )
-            
+            # Add job to scheduler 
             scheduler.add_job(
                 post_comment_for_order, 
                 args=[channels_to_comment, order, account], 
@@ -108,13 +107,29 @@ async def run_order(order_id, scheduler):
 
 async def orders_handler():
     scheduler = AsyncIOScheduler()
-    orders = await get_all_orders()
+    orders = await get_all_orders() 
+    # dict:
+    # {
+    #     'id': order.id,
+    #     'created_at': order.created_at,
+    #     'channel_address': order.channel_address,
+    #     'channel_description': order.channel_description,
+    #     'channel_category': [{'id': category.id, 'name': category.name} for category in order_categories],
+    #     'ordered_comment_posts': order.ordered_comment_posts,
+    #     'completed_comment_posts': order.completed_comment_posts,
+    #     'ordered_ad_days': order.ordered_ad_days,
+    #     'completed_ad_days': order.completed_ad_days,
+    #     'is_active': order.is_active,
+    #     'accounts_count': order.accounts_count,
+    #     'ordered_status': order.ordered_status
+    # }
 
-    active_orders = [order for order in orders if order.get('ordered_status') == 'active']
+    active_orders = [order for order in orders if order.get('ordered_status') == 'active'] # all acive orders
     for order in active_orders:
         channel_address = order.get('channel_address')
         order_id = order.get('id')
 
+        # Check count of completed comments and unlink accounts from orders
         if order.get('ordered_comment_posts') != None:
             if order.get('completed_comment_posts') >=\
                 order.get('ordered_comment_posts'):
@@ -122,15 +137,18 @@ async def orders_handler():
                 await unlink_account_to_order(order_id=order_id)
                 continue
 
+        # Check count of completed days and unlink accounts from orders
         if order.get('ordered_ad_days') != None:
             if order.get('completed_ad_days') >=\
                 order.get('ordered_ad_days'):
                 await deactivate_order_by_channel_address(channel_address=channel_address)
                 await unlink_account_to_order(order_id=order_id)
                 continue
-
+        
+        # Add to scheduler active order
         await run_order(order_id, scheduler)
 
+    # all pending orders
     pending_orders = sorted(
         [order for order in orders if order.get('ordered_status') == 'pending'], 
         key=lambda x: x['id']
@@ -140,38 +158,43 @@ async def orders_handler():
         order_accounts_count = order.get('accounts_count')
         order_id = order.get('id')
 
+        # if count of free accounts >= accounts count to order linked accs to order (list of order not sorted)
         free_accounts = [account for account in accounts if account.get('current_order_id') == None]
         if len(free_accounts) < order_accounts_count:
             break
         
-        for account in free_accounts:
+        for index, account in enumerate(free_accounts):
+            if index + 1 == int(order_accounts_count):
+                break
+
             await link_account_to_order(account_id=account.get('id'), order_id=order_id)
         
+        # Activate and add to scheduler pending order
         await activate_order_by_id(id=order_id)
         await run_order(order_id, scheduler)
 
+    # Run all active orders
     scheduler.start()
 
 
 async def main():
     logger.info('DB init.')
-    await async_main()
+    await async_main() # init database
     while True:
         logger.info('Init scheduler for orders.')
-        await orders_handler()
-        seconds_since_midnight = get_seconds_since_midnight()
+        await orders_handler() # start order handler
+        seconds_since_midnight = get_seconds_since_midnight() # culc time since midnight to sleep
         remaining_seconds = 86400 - seconds_since_midnight
-
         logger.info(
             f'Current time: {datetime.now(TZ).strftime("%H:%M")}. Sleeping: {round(remaining_seconds / 3600, 2)} hours.'
         )
-        
-        await asyncio.sleep(remaining_seconds)
+        await asyncio.sleep(remaining_seconds) # sleep to 0:00
 
 
 if __name__ == '__main__':
     logger.info('TGK start.')
     try:
+        # run main handler
         asyncio.run(main())
 
     except KeyboardInterrupt:

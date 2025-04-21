@@ -47,8 +47,8 @@ logger.addHandler(file_handler)
 
 
 if __name__ == '__main__':
-    logger.debug("Это DEBUG сообщение")
-    logger.info("Это INFO сообщение")
-    logger.warning("Это WARNING сообщение")
-    logger.error("Это ERROR сообщение")
-    logger.critical("Это CRITICAL сообщение")
+    logger.debug("It is DEBUG msg")
+    logger.info("It is INFO msg")
+    logger.warning("It is WARNING msg")
+    logger.error("It is ERROR msg")
+    logger.critical("It is CRITICAL msg")

@@ -30,14 +30,11 @@ def save_account(account):
 def connect_telegram_account(account_id):
     from .models import TelegramAccount
 
-    # Получаем аккаунт по ID
     account = TelegramAccount.objects.get(id=account_id)
 
-    # Теперь передаем account в асинхронную функцию
     async def init_connect(account):
         phone_number = await get_phone_number(account)
 
-        # Проверяем, что номер телефона существует
         if phone_number is None:
             raise ValueError(f"Phone number is not set for account with ID {account_id}")
         
@@ -54,11 +51,10 @@ def connect_telegram_account(account_id):
             await client.send_code_request(str(phone_number))
             
             start_time = time.time()
-            while time.time() - start_time < 300:  # Ждем 5 минут
-                account = await refresh_account(account)  # Передаем account сюда
+            while time.time() - start_time < 300: 
+                account = await refresh_account(account)  
                 auth_code = await get_auth_code(account)
                 
-                # Проверка на наличие кода авторизации
                 if auth_code:
                     await client.sign_in(str(phone_number), auth_code)
                     account.is_connected = True
@@ -72,5 +68,4 @@ def connect_telegram_account(account_id):
 
         await client.disconnect()
 
-    # Передаем account как аргумент в асинхронную функцию
     asyncio.run(init_connect(account))
