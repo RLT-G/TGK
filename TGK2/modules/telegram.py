@@ -18,7 +18,8 @@ from modules.database.queries import (
     increment_completed_comment_posts, 
     create_comment_in_db, 
     get_about_data,
-    get_numberphone_by_id
+    get_numberphone_by_id,
+    get_proxy_data_by_id
 )
 from pprint import pprint
 import traceback
@@ -34,14 +35,15 @@ async def _init_block(account, order):
             account.get('phone_number_id')
         )
         channel_address = order.get('channel_address')
-
+        proxy = await get_proxy_data_by_id(account.get('id'))
         return [
             account.get('api_id'),
             account.get('api_hash'),
             phone_number,
             account.get('gender'),
             channel_address,
-            order.get('channel_description')
+            order.get('channel_description'),
+            proxy
         ]
     
     except Exception as ex:
@@ -292,7 +294,7 @@ async def post_comment_for_order(channels_to_comment, order, account):
     init_data = await _init_block(account, order) 
     if not init_data:
         return
-    api_id, api_hash, phone_number, gender, channel_address, channel_description = init_data
+    api_id, api_hash, phone_number, gender, channel_address, channel_description, proxy = init_data
 
 
     try:
@@ -301,7 +303,8 @@ async def post_comment_for_order(channels_to_comment, order, account):
             f"./sessions/{api_id}{api_hash}{phone_number[1::]}", 
             api_id, 
             api_hash, 
-            system_version='4.16.30-vxCUSTOM'
+            system_version='4.16.30-vxCUSTOM',
+            proxy=proxy
         ) 
         await client.connect()
         if not await client.is_user_authorized():

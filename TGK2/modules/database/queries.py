@@ -67,9 +67,6 @@ async def get_searcher_data() -> dict:
         return
 
 
-
-
-
 async def get_non_searcher_data():
     """
     Receive accounts with is_searcher=False
@@ -201,7 +198,6 @@ async def get_all_channels() -> list[dict]:
         
     return channels_data
 
-
 # Broken function because db is changed
 async def sync_channels_from_json(file_path: str):
     """
@@ -282,6 +278,7 @@ async def get_all_orders() -> dict:
             orders_data.append(order_data)
 
         return orders_data
+
 
 async def get_order_by_id(order_id: int):
     async with async_session() as session:
@@ -408,6 +405,10 @@ async def deactivate_order_by_channel_address(channel_address: str):
 
         order.ordered_status = 'completed'
         await session.commit()
+
+
+async def get_proxy_data_by_id(id: int):
+    ...
 
 
 async def activate_order_by_id(id: int):

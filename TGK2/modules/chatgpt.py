@@ -12,7 +12,6 @@ async def fetch_chatgpt_response(
         prompt: str, 
         max_tokens: int = 200) -> str:
     try:
-
         request_params = {
             "model": model,
             "messages": [
@@ -20,11 +19,8 @@ async def fetch_chatgpt_response(
             ],
             "max_tokens": max_tokens
         }
-
         response = await openai.ChatCompletion.acreate(**request_params)
-
         return response['choices'][0]['message']['content']
-    
     except Exception as e:  
         return settings.DEFAULT_COMMENT
     
@@ -38,7 +34,6 @@ async def generate_comment(
 ) -> str:
     if len(post_text) > post_max_len:
         post_text = post_text[0:post_max_len]
-
     if use_two_steps:
         comment_large: str = await fetch_chatgpt_response(
             model='gpt-4o-mini',
@@ -62,13 +57,10 @@ async def generate_comment(
             ),
             max_tokens=max_out_tokens
         )
-        
     for symbol in settings.SYMBOLS_TO_DELETE:
         comment = comment.replace(symbol, '')
-
     for old_symbol, new_symbol in settings.SYMBOLS_TO_REPLACE:
         comment = comment.replace(old_symbol, new_symbol)
-
     return comment
         
 
@@ -87,13 +79,11 @@ async def generate_about_text(gender: str, channel_address: str, channel_descrip
             large_about_text
         )
     )
-
     if not channel_address in small_about_text:
         if len(small_about_text + channel_address) + 1 > 70:
             small_about_text = channel_address
         else:
             small_about_text = f"{small_about_text} {channel_address}"
-
     if len(small_about_text) >= 70:
         small_about_text = channel_address
     
@@ -110,7 +100,6 @@ async def generate_reply_text(post_text, my_comment_text, reply_text):
         ),
         max_tokens=200
     )
-    
     reply: str = await fetch_chatgpt_response(
         model='gpt-4o-mini',
         prompt=settings.REPLY_PROMT_2.format(
@@ -118,13 +107,10 @@ async def generate_reply_text(post_text, my_comment_text, reply_text):
         ),
         max_tokens=200
     )
-
     for symbol in settings.SYMBOLS_TO_DELETE:
         reply = reply.replace(symbol, '')
-
     for old_symbol, new_symbol in settings.SYMBOLS_TO_REPLACE:
         reply = reply.replace(old_symbol, new_symbol)
-
     return reply
 
 

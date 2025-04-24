@@ -83,10 +83,8 @@ class Order(models.Model):
 
     ordered_comment_posts = models.IntegerField('Заказанное кол-во комментариев', null=True, blank=True)
     completed_comment_posts = models.IntegerField('Выполненное кол-во комментариев', default=0, null=True, blank=True)
-    
     ordered_ad_days = models.IntegerField('Заказанное кол-во дней рекламирования', null=True, blank=True)
     completed_ad_days = models.IntegerField('Выполненное кол-во дней рекламирования', default=0, null=True, blank=True)
-    
     accounts_count = models.IntegerField('Кол-во аккаунтов для комментирования', default=0)
     ordered_status = models.CharField('Статус заказа', choices=STATUSES, default='pending')
     is_active = models.BooleanField('Заказ активен?', default=False)
@@ -108,10 +106,8 @@ class TelegramAccount(models.Model):
     ]
 
     username = models.CharField('Ник пользователя (@username)', max_length=100, unique=True, null=True, blank=True)
-    
     telegram_firstname = models.CharField('Имя', max_length=255, unique=False, null=True, blank=True, default="")
     telegram_secondname = models.CharField('Фамилия', max_length=255, unique=False, null=True, blank=True, default="")
-
     phone_number = models.OneToOneField(PhoneNumber, on_delete=models.CASCADE, verbose_name='Номер телефона', )
     proxy = models.OneToOneField(Proxy, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Прокси-сервер')
     gender = models.CharField('Пол', max_length=1, choices=CATEGORY)
@@ -161,7 +157,6 @@ class Category(models.Model):
 class Channel(models.Model):
 
     telegram_links = models.CharField('Ссылки на каналы', unique=False, null=False, default='[]')
-
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Категория канала')
 
     class Meta:
@@ -177,7 +172,7 @@ class Channel(models.Model):
 class Comment(models.Model):
     telegram_account = models.ForeignKey(TelegramAccount, on_delete=models.CASCADE, verbose_name='Телеграмм аккаунт')
     channel_link = models.URLField('URL канала')
-    comment_link = models.CharField('URL комментария', max_length=100, null=True, blank=True)#Column(String(100), nullable=True)
+    comment_link = models.CharField('URL комментария', max_length=100, null=True, blank=True) #Column(String(100), nullable=True)
     text = models.TextField('Текст комментария')
     posted_at = models.DateTimeField('Дата размещения', default=timezone.now)
 
@@ -196,6 +191,7 @@ class OrderCategory(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
 
     class Meta:
-        db_table = 'orders_channel_category'  # Указываем явное имя таблицы
-        unique_together = ('order', 'category')  # Ограничение на уникальность пары (order, category)
+        db_table = 'orders_channel_category'  
+        unique_together = ('order', 'category')
         managed = False  
+        
