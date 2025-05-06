@@ -55,7 +55,6 @@ class PhoneNumber(models.Model):
 #     class Meta:
 #         unique_together = ('order', 'category')
 
-
 class Order(models.Model):
     
     STATUSES = [
@@ -94,7 +93,10 @@ class Order(models.Model):
         db_table = 'orders'
         verbose_name = 'Заказ'
         verbose_name_plural = 'Заказы'
-    
+
+    def delete(self, *args, **qwargs):
+        super().delete(*args, **qwargs)
+         
     def __str__(self):
         return f"Заказ №{self.pk} --- {self.channel_address} --- {self.statuses_for_str.get(self.ordered_status)} "
 
@@ -121,7 +123,8 @@ class TelegramAccount(models.Model):
     auth_code = models.CharField('Код подтверждения', max_length=255, null=True, blank=True)
     current_order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Текущий заказ')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, db_column='avatar_url', verbose_name='Аватар')
-
+    need_update = models.BooleanField(default=False)
+    # need_update = Column(Boolean, default=False)
     class Meta:
         managed = False 
         db_table = 'telegram_accounts'
@@ -132,10 +135,9 @@ class TelegramAccount(models.Model):
         is_new = self.pk is None
         super().save(*args, **kwargs)
 
+        self.need_update = True
         if is_new:
             connect_telegram_account.delay(self.id)
-        
-
 
     def __str__(self):
         return self.username or str(self.phone_number)
@@ -183,15 +185,14 @@ class Comment(models.Model):
         verbose_name_plural = 'Комментарии'
 
     def __str__(self):
-        return f"Аккаунт: {self.telegram_account.username} | URL канала: {self.channel_link} | URL комментария: {self.comment_link or 'unknown'}"
+        return f"{self.telegram_account.username} | {self.channel_link} | {self.comment_link or 'unknown'}"
     
 
 class OrderCategory(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, db_column='order_id')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, db_column='category_id')
 
     class Meta:
         db_table = 'orders_channel_category'  
         unique_together = ('order', 'category')
         managed = False  
-        

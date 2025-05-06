@@ -1,0 +1,2 @@
+ALTER TABLE telegram_accounts ADD COLUMN need_update BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE orders_channel_category ADD COLUMN id SERIAL;

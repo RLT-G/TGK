@@ -39,7 +39,7 @@ def connect_telegram_account(account_id):
             raise ValueError(f"Phone number is not set for account with ID {account_id}")
         
         client = TelegramClient(
-            f"../TGK2/sessions/{account.api_id}{account.api_hash}{str(phone_number)[1:]}", 
+            f"../TGK3/sessions/{account.api_id}{account.api_hash}{str(phone_number)[1:]}", 
             account.api_id, 
             account.api_hash, 
             system_version='4.16.30-vxCUSTOM'

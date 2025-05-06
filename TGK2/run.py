@@ -1,8 +1,5 @@
 import asyncio
-import aiohttp
-import time
 import random
-import logging
 from datetime import datetime, timedelta
 
 from apscheduler.triggers.date import DateTrigger
@@ -10,9 +7,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from modules.database.models import async_main
 from modules.database.queries import (
-    save_proxy_data, 
-    sync_channels_from_json, 
-    get_non_searcher_data,
     get_all_orders,
     get_all_channels,
     get_all_telegram_accounts,
@@ -23,12 +17,10 @@ from modules.database.queries import (
     get_order_by_id,
     get_all_telegram_accounts_by_order_id
 )
-from modules import proxy
 from modules.settings import TZ, DEBUG
 from modules.telegram import post_comment_for_order
 from modules.log_handler import logger
 from modules import settings
-from pprint import pprint
 
 
 def get_seconds_since_midnight():
@@ -108,21 +100,6 @@ async def run_order(order_id, scheduler):
 async def orders_handler():
     scheduler = AsyncIOScheduler()
     orders = await get_all_orders() 
-    # dict:
-    # {
-    #     'id': order.id,
-    #     'created_at': order.created_at,
-    #     'channel_address': order.channel_address,
-    #     'channel_description': order.channel_description,
-    #     'channel_category': [{'id': category.id, 'name': category.name} for category in order_categories],
-    #     'ordered_comment_posts': order.ordered_comment_posts,
-    #     'completed_comment_posts': order.completed_comment_posts,
-    #     'ordered_ad_days': order.ordered_ad_days,
-    #     'completed_ad_days': order.completed_ad_days,
-    #     'is_active': order.is_active,
-    #     'accounts_count': order.accounts_count,
-    #     'ordered_status': order.ordered_status
-    # }
 
     active_orders = [order for order in orders if order.get('ordered_status') == 'active'] # all acive orders
     for order in active_orders:

@@ -31,7 +31,8 @@ class TelegramAccountAdmin(admin.ModelAdmin):
                 'api_hash', 
                 'auth_code', 
                 'is_connected', 
-                'is_banned'
+                'is_banned',
+                'need_update'
             ]
         return fields
     

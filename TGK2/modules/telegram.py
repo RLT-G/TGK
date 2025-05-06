@@ -120,8 +120,6 @@ async def _change_account_block(client, api_id, api_hash, channel_address, gende
             logger.debug(f'_change_account_block - lastname: {ex}')
 
         try:
-
-            
             await client(SetPrivacyRequest(
                 key=types.InputPrivacyKeyPhoneNumber(),
                 rules=[types.InputPrivacyValueDisallowAll()]
@@ -331,7 +329,7 @@ async def post_comment_for_order(channels_to_comment, order, account):
                 
                 if post_data.get('last_post').get('text_len') < settings.POST_MIN_LEN:
                     continue
-
+                
                 discussion_group_id = post_data.get('discussion_group_id')
 
                 # Try to connect in group
